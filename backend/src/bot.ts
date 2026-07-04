@@ -20,6 +20,7 @@ const alertChannelId = process.env.DISCORD_ALERT_CHANNEL_ID;
 const apiBase = process.env.DISCORD_API_BASE || process.env.API_BASE || 'http://localhost:3001';
 const alertPollMs = Number.parseInt(process.env.DISCORD_ALERT_POLL_MS || '5000', 10);
 const useMessageContentIntent = process.env.DISCORD_USE_MESSAGE_CONTENT_INTENT === 'true';
+const postExistingAlertsOnStartup = process.env.DISCORD_POST_EXISTING_ALERTS_ON_STARTUP === 'true';
 
 if (!token) {
   console.log('[Discord Bot] DISCORD_BOT_TOKEN is not set. Bot is disabled for this run.');
@@ -35,6 +36,7 @@ const client = new Client({
 });
 
 const postedAlertIds = new Set<string>();
+let alertWatcherPrimed = false;
 
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`[Discord Bot] Logged in as ${readyClient.user.tag}`);
@@ -149,6 +151,18 @@ function startAlertWatcher() {
 async function pollAlerts() {
   try {
     const alerts = await fetchJson<BackendAlert[]>('/api/alerts');
+
+    if (!alertWatcherPrimed) {
+      alertWatcherPrimed = true;
+      if (!postExistingAlertsOnStartup) {
+        for (const alert of alerts) {
+          postedAlertIds.add(alert.id);
+        }
+        console.log(`[Discord Bot] Alert watcher ready. Skipping ${alerts.length} existing alert(s).`);
+        return;
+      }
+    }
+
     for (const alert of alerts.reverse()) {
       if (postedAlertIds.has(alert.id)) continue;
       postedAlertIds.add(alert.id);
