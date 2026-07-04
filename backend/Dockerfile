@@ -9,6 +9,9 @@ RUN npm ci
 # Copy source
 COPY . .
 
+# Compile TypeScript to runnable JavaScript
+RUN npm run build
+
 # Create data directory for JSON store persistence
 RUN mkdir -p /app/data
 
@@ -20,4 +23,4 @@ ENV SIMULATOR_INTERVAL_MS=5000
 
 EXPOSE 3001
 
-CMD ["npx", "tsx", "src/server.ts"]
+CMD ["npm", "start"]
